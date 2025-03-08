@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Pagamentos</title>
+    <style>
+        /* Estilos CSS (mantidos iguais) */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+            overflow-y: auto;
+            max-height: 90vh;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+
+        input, select, button {
+            padding: 8px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #resultado {
+            font-size: 16px;
+            margin-top: 20px;
+            color: #333;
+            text-align: left;
+        }
+
+        .pagamento {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .pago {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .pago-parcialmente {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .pendente {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .atrasado {
+            background-color: #dc3545;
+            color: #fff;
+        }
+
+        .detalhes-pagamento {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        .confirmar-pagamento {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .confirmar-pagamento:hover {
+            background-color: #0056b3;
+        }
+
+        .historico-pagamento {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .historico-pagamento p {
+            margin: 5px 0;
+        }
+
+        .paginacao {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .paginacao button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .paginacao button:hover {
+            background-color: #0056b3;
+        }
+
+        .paginacao button.ativo {
+            background-color: #28a745;
+        }
+
+        .modal-confirmar {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .modal-confirmar label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .modal-confirmar input, .modal-confirmar select, .modal-confirmar button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .modal-confirmar button {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        .modal-confirmar button:hover {
+            background-color: #218838;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .modal-confirmar.visible, .modal-overlay.visible {
+            display: block;
+        }
+
+        .valor-atraso {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #721c24;
+            background-color: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Calculadora de Pagamentos</h1>
+        <label for="valorSemanal">Valor por Semana:</label>
+        <input type="number" id="valorSemanal" min="0" placeholder="Digite o valor por semana">
+
+        <label for="periodo">Escolha o Período:</label>
+        <select id="periodo" onchange="atualizarLabel()">
+            <option value="meses">Meses</option>
+            <option value="anos">Anos</option>
+        </select>
+
+        <label for="quantidade" id="labelQuantidade">Quantidade de Meses:</label>
+        <input type="number" id="quantidade" min="1" placeholder="Digite a quantidade">
+
+        <label for="dataInicio">Data de Início:</label>
+        <input type="date" id="dataInicio">
+
+        <label for="diaSemana">Dia da Semana:</label>
+        <select id="diaSemana">
+            <option value="1">Segunda-feira</option>
+            <option value="2">Terça-feira</option>
+            <option value="3">Quarta-feira</option>
+            <option value="4">Quinta-feira</option>
+            <option value="5">Sexta-feira</option>
+            <option value="6">Sábado</option>
+            <option value="0">Domingo</option>
+        </select>
+
+        <button onclick="gerarPagamentos()">Gerar Pagamentos</button>
+
+        <!-- Área para exibir o valor total em atraso -->
+        <div id="valorAtraso" class="valor-atraso">Valor total em atraso: R$ 0,00</div>
+
+        <!-- Filtro por Ano -->
+        <label for="filtroAno">Filtrar por Ano:</label>
+        <select id="filtroAno" onchange="filtrarPorAno()">
+            <option value="todos">Todos</option>
+        </select>
+
+        <h2>Gráfico de Status dos Pagamentos</h2>
+        <canvas id="graficoPagamentos"></canvas>
+
+        <h2>Lista de Pagamentos:</h2>
+        <div id="resultado"></div>
+
+        <!-- Paginação -->
+        <div class="paginacao" id="paginacao"></div>
+    </div>
+
+    <!-- Modal para confirmar pagamento -->
+    <div class="modal-confirmar">
+        <h2>Confirmar Pagamento</h2>
+        <label for="valorPago">Valor Pago:</label>
+        <input type="number" id="valorPago" min="0" placeholder="Digite o valor pago">
+
+        <label for="confirmarTipoPagamento">Tipo de Pagamento:</label>
+        <select id="confirmarTipoPagamento">
+            <option value="Dinheiro">Dinheiro</option>
+            <option value="Cartão">Cartão</option>
+            <option value="Transferência">Transferência</option>
+            <option value="Outro">Outro</option>
+        </select>
+
+        <button onclick="confirmarPagamento()">Confirmar</button>
+        <button onclick="fecharModalConfirmar()">Cancelar</button>
+    </div>
+
+    <div class="modal-overlay"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let pagamentos = [];
+        let pagamentosFiltrados = [];
+        let pagamentoConfirmando = null;
+        let paginaAtual = 1;
+        const paginasPorPagina = 12; // 12 pagamentos por página
+        let grafico;
+
+        function atualizarLabel() {
+            const periodo = document.getElementById('periodo').value;
+            const labelQuantidade = document.getElementById('labelQuantidade');
+            if (periodo === "meses") {
+                labelQuantidade.textContent = "Quantidade de Meses:";
+            } else {
+                labelQuantidade.textContent = "Quantidade de Anos:";
+            }
+        }
+
+        function gerarPagamentos() {
+            const valorSemanal = parseFloat(document.getElementById('valorSemanal').value);
+            const periodo = document.getElementById('periodo').value;
+            const quantidade = parseInt(document.getElementById('quantidade').value);
+            const dataInicio = new Date(document.getElementById('dataInicio').value);
+            const diaSemana = parseInt(document.getElementById('diaSemana').value);
+
+            if (isNaN(valorSemanal) || valorSemanal <= 0) {
+                alert("Por favor, insira um valor válido por semana.");
+                return;
+            }
+
+            if (isNaN(quantidade) || quantidade <= 0) {
+                alert("Por favor, insira uma quantidade válida.");
+                return;
+            }
+
+            if (!dataInicio.getTime()) {
+                alert("Por favor, insira uma data de início válida.");
+                return;
+            }
+
+            document.getElementById('resultado').innerHTML = '';
+
+            // Ajustar a data de início para o dia da semana escolhido
+            while (dataInicio.getDay() !== diaSemana) {
+                dataInicio.setDate(dataInicio.getDate() + 1);
+            }
+
+            pagamentos = [];
+            let numeroSemanas;
+
+            if (periodo === "meses") {
+                numeroSemanas = quantidade * 4; // 4 semanas por mês
+            } else {
+                numeroSemanas = quantidade * 52; // 52 semanas por ano
+            }
+
+            const hoje = new Date(); // Data atual
+
+            for (let i = 0; i < numeroSemanas; i++) {
+                const dataPagamento = new Date(dataInicio);
+                dataPagamento.setDate(dataInicio.getDate() + (i * 7)); // 7 dias entre cada pagamento
+
+                // Verifica se o pagamento está atrasado
+                const status = dataPagamento < hoje ? "Atrasado" : "Pendente";
+
+                pagamentos.push({
+                    data: dataPagamento,
+                    status: status, // Define o status inicial como "Atrasado" ou "Pendente"
+                    confirmado: false,
+                    dataConfirmacao: null,
+                    tipoPagamento: null,
+                    valor: valorSemanal,
+                    valorPago: 0,
+                    historico: [] // Histórico de pagamentos parciais
+                });
+            }
+
+            // Atualizar o filtro de anos
+            atualizarFiltroAno();
+            filtrarPorAno();
+            gerarGrafico();
+            calcularAtrasos(); // Calcular atrasos automaticamente
+        }
+
+        function atualizarFiltroAno() {
+            const filtroAno = document.getElementById('filtroAno');
+            const anos = [...new Set(pagamentos.map(p => p.data.getFullYear()))]; // Extrai anos únicos
+            filtroAno.innerHTML = '<option value="todos">Todos</option>';
+            anos.forEach(ano => {
+                filtroAno.innerHTML += `<option value="${ano}">${ano}</option>`;
+            });
+        }
+
+        function filtrarPorAno() {
+            const anoSelecionado = document.getElementById('filtroAno').value;
+            if (anoSelecionado === "todos") {
+                pagamentosFiltrados = pagamentos;
+            } else {
+                pagamentosFiltrados = pagamentos.filter(p => p.data.getFullYear() == anoSelecionado);
+            }
+            paginaAtual = 1; // Volta para a primeira página
+            exibirPagamentos();
+            gerarGrafico();
+        }
+
+        function exibirPagamentos() {
+            const resultado = document.getElementById('resultado');
+            resultado.innerHTML = '';
+
+            const inicio = (paginaAtual - 1) * paginasPorPagina;
+            const fim = inicio + paginasPorPagina;
+            const pagamentosExibidos = pagamentosFiltrados.slice(inicio, fim);
+
+            pagamentosExibidos.forEach((pagamento, index) => {
+                const dataFormatada = pagamento.data.toLocaleDateString('pt-BR');
+                const divPagamento = document.createElement('div');
+                divPagamento.className = 'pagamento';
+
+                const valorRestante = pagamento.valor - pagamento.valorPago;
+
+                divPagamento.innerHTML = `
+                    <strong>Data:</strong> ${dataFormatada}<br>
+                    <strong>Valor por Semana:</strong> R$ ${pagamento.valor.toFixed(2)}<br>
+                    <strong>Valor Pago:</strong> R$ ${pagamento.valorPago.toFixed(2)}<br>
+                    <strong>Valor Restante:</strong> R$ ${valorRestante.toFixed(2)}<br>
+                    <strong>Status:</strong> <span class="status ${pagamento.status.toLowerCase().replace(" ", "-")}">${pagamento.status}</span><br>
+                    ${pagamento.confirmado ? `
+                        <strong>Data de Confirmação:</strong> ${pagamento.dataConfirmacao.toLocaleDateString('pt-BR')}<br>
+                        <strong>Tipo de Pagamento:</strong> ${pagamento.tipoPagamento}
+                    ` : `
+                        <button class="confirmar-pagamento" onclick="abrirModalConfirmar(${inicio + index})">Confirmar Pagamento</button>
+                    `}
+                    ${pagamento.historico.length > 0 ? `
+                        <div class="historico-pagamento">
+                            <strong>Histórico de Pagamentos:</strong>
+                            ${pagamento.historico.map(p => `
+                                <p>${p.data.toLocaleDateString('pt-BR')} - R$ ${p.valor.toFixed(2)} (${p.tipo})</p>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    ${(pagamento.status === "Pago Parcialmente" || pagamento.status === "Atrasado") ? `
+                        <button class="confirmar-pagamento" onclick="pagarRestante(${inicio + index})">Pagar Restante (R$ ${valorRestante.toFixed(2)})</button>
+                    ` : ''}
+                `;
+
+                resultado.appendChild(divPagamento);
+            });
+
+            // Atualizar a paginação
+            atualizarPaginacao();
+        }
+
+        function atualizarPaginacao() {
+            const paginacao = document.getElementById('paginacao');
+            const totalPaginas = Math.ceil(pagamentosFiltrados.length / paginasPorPagina);
+
+            paginacao.innerHTML = '';
+            if (paginaAtual > 1) {
+                paginacao.innerHTML += `<button onclick="irParaPagina(${paginaAtual - 1})">Anterior</button>`;
+            }
+            for (let i = 1; i <= totalPaginas; i++) {
+                paginacao.innerHTML += `<button class="${i === paginaAtual ? 'ativo' : ''}" onclick="irParaPagina(${i})">${i}</button>`;
+            }
+            if (paginaAtual < totalPaginas) {
+                paginacao.innerHTML += `<button onclick="irParaPagina(${paginaAtual + 1})">Próxima</button>`;
+            }
+        }
+
+        function irParaPagina(pagina) {
+            paginaAtual = pagina;
+            exibirPagamentos();
+        }
+
+        function abrirModalConfirmar(index) {
+            pagamentoConfirmando = index;
+            document.getElementById('valorPago').value = pagamentosFiltrados[index].valorPago || 0;
+            document.querySelector('.modal-confirmar').classList.add('visible');
+            document.querySelector('.modal-overlay').classList.add('visible');
+        }
+
+        function fecharModalConfirmar() {
+            document.querySelector('.modal-confirmar').classList.remove('visible');
+            document.querySelector('.modal-overlay').classList.remove('visible');
+        }
+
+        function confirmarPagamento() {
+            const valorPago = parseFloat(document.getElementById('valorPago').value);
+            const tipoPagamento = document.getElementById('confirmarTipoPagamento').value;
+            const pagamento = pagamentosFiltrados[pagamentoConfirmando];
+
+            if (isNaN(valorPago) || valorPago < 0) {
+                alert("Por favor, insira um valor válido para o pagamento.");
+                return;
+            }
+
+            if (valorPago > pagamento.valor - pagamento.valorPago) {
+                alert("O valor pago não pode ser maior que o valor restante.");
+                return;
+            }
+
+            if (!tipoPagamento) {
+                alert("Tipo de pagamento é obrigatório.");
+                return;
+            }
+
+            // Atualizar o valor pago e o status
+            pagamento.valorPago += valorPago;
+            if (pagamento.valorPago >= pagamento.valor) {
+                pagamento.status = "Pago";
+            } else {
+                pagamento.status = "Pago Parcialmente";
+            }
+
+            // Verifica se o pagamento ainda está atrasado
+            const hoje = new Date();
+            if (pagamento.data < hoje && pagamento.status !== "Pago") {
+                pagamento.status = "Pago Parcialmente"; // Mantém como "Pago Parcialmente" se ainda houver valor restante
+            }
+
+            // Adicionar ao histórico de pagamentos
+            pagamento.historico.push({
+                data: new Date(),
+                valor: valorPago,
+                tipo: tipoPagamento
+            });
+
+            pagamento.confirmado = true;
+            pagamento.dataConfirmacao = new Date();
+            pagamento.tipoPagamento = tipoPagamento;
+
+            fecharModalConfirmar();
+            exibirPagamentos();
+            gerarGrafico();
+            calcularAtrasos(); // Atualizar o valor em atraso
+        }
+
+        function pagarRestante(index) {
+            const pagamento = pagamentosFiltrados[index];
+            const valorRestante = pagamento.valor - pagamento.valorPago;
+
+            // Preencher o modal com o valor restante
+            document.getElementById('valorPago').value = valorRestante;
+            abrirModalConfirmar(index);
+        }
+
+        function calcularAtrasos() {
+            const hoje = new Date(); // Data atual
+            let totalAtraso = 0;
+
+            // Filtra os pagamentos em atraso
+            const pagamentosAtraso = pagamentos.filter(pagamento => {
+                return (pagamento.status === "Pendente" || pagamento.status === "Atrasado" || pagamento.status === "Pago Parcialmente") && pagamento.data < hoje;
+            });
+
+            // Soma o valor dos pagamentos em atraso
+            pagamentosAtraso.forEach(pagamento => {
+                totalAtraso += pagamento.valor - pagamento.valorPago;
+            });
+
+            // Exibe o valor total em atraso
+            const valorAtrasoDiv = document.getElementById('valorAtraso');
+            if (totalAtraso > 0) {
+                valorAtrasoDiv.textContent = `Valor total em atraso: R$ ${totalAtraso.toFixed(2)}`;
+            } else {
+                valorAtrasoDiv.textContent = "Nenhum pagamento em atraso.";
+            }
+        }
+
+        function gerarGrafico() {
+            const ctx = document.getElementById('graficoPagamentos').getContext('2d');
+
+            const labels = pagamentos.map(p => p.data.toLocaleDateString('pt-BR'));
+            const valores = pagamentos.map(p => p.valor);
+            const status = pagamentos.map(p => p.status);
+
+            const cores = status.map((s, i) => {
+                const pagamento = pagamentos[i];
+                if (s === "Pago") return '#28a745'; // Verde
+                if (s === "Pago Parcialmente") return '#ffc107'; // Amarelo
+                if (s === "Atrasado") return '#dc3545'; // Vermelho
+                if (s === "Pendente" && pagamento.data < new Date()) return '#dc3545'; // Vermelho para pendentes atrasados
+                return '#6c757d'; // Cinza para pendentes não atrasados
+            });
+
+            if (grafico) {
+                grafico.destroy();
+            }
+
+            grafico = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Valor dos Pagamentos',
+                        data: valores,
+                        backgroundColor: cores,
+                        borderColor: '#000',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Valor (R$)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Data do Pagamento'
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const pagamento = pagamentos[context.dataIndex];
+                                    return `Status: ${pagamento.status} | Valor: R$ ${pagamento.valor.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
